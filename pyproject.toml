@@ -10,9 +10,12 @@ dependencies = [
     "numpy",
     "opencv-python",
     "matplotlib",
+    "torch",
+    "tqdm",
 ]
 
 [project.optional-dependencies]
+viz = ["open3d"]
 dev = ["pytest", "ipykernel"]
 
 [tool.setuptools.packages.find]
