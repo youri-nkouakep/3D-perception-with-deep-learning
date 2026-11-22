@@ -1,0 +1,108 @@
+{
+  "precision_globale": 0.8857,
+  "precision_moyenne_par_classe": 0.8314,
+  "par_classe": {
+    "airplane": 1.0,
+    "bathtub": 0.88,
+    "bed": 0.98,
+    "bench": 0.75,
+    "bookshelf": 0.96,
+    "bottle": 0.95,
+    "bowl": 0.95,
+    "car": 0.97,
+    "chair": 0.98,
+    "cone": 0.9,
+    "cup": 0.5,
+    "curtain": 0.7,
+    "desk": 0.814,
+    "door": 0.9,
+    "dresser": 0.872,
+    "flower_pot": 0.15,
+    "glass_box": 0.98,
+    "guitar": 1.0,
+    "keyboard": 0.95,
+    "lamp": 0.85,
+    "laptop": 1.0,
+    "mantel": 0.91,
+    "monitor": 0.97,
+    "night_stand": 0.558,
+    "person": 0.9,
+    "piano": 0.86,
+    "plant": 0.71,
+    "radio": 0.45,
+    "range_hood": 0.95,
+    "sink": 0.7,
+    "sofa": 1.0,
+    "stairs": 0.8,
+    "stool": 0.7,
+    "table": 0.95,
+    "tent": 0.95,
+    "toilet": 0.99,
+    "tv_stand": 0.86,
+    "vase": 0.81,
+    "wardrobe": 0.5,
+    "xbox": 0.65
+  },
+  "confusions_principales": [
+    {
+      "vraie": "night_stand",
+      "predite": "dresser",
+      "nombre": 19,
+      "part": 0.221
+    },
+    {
+      "vraie": "flower_pot",
+      "predite": "plant",
+      "nombre": 11,
+      "part": 0.55
+    },
+    {
+      "vraie": "desk",
+      "predite": "table",
+      "nombre": 8,
+      "part": 0.093
+    },
+    {
+      "vraie": "vase",
+      "predite": "cup",
+      "nombre": 8,
+      "part": 0.08
+    },
+    {
+      "vraie": "night_stand",
+      "predite": "table",
+      "nombre": 6,
+      "part": 0.07
+    },
+    {
+      "vraie": "plant",
+      "predite": "flower_pot",
+      "nombre": 6,
+      "part": 0.06
+    },
+    {
+      "vraie": "cup",
+      "predite": "vase",
+      "nombre": 6,
+      "part": 0.3
+    },
+    {
+      "vraie": "radio",
+      "predite": "glass_box",
+      "nombre": 5,
+      "part": 0.25
+    },
+    {
+      "vraie": "wardrobe",
+      "predite": "bookshelf",
+      "nombre": 5,
+      "part": 0.25
+    },
+    {
+      "vraie": "piano",
+      "predite": "table",
+      "nombre": 5,
+      "part": 0.05
+    }
+  ]
+}
