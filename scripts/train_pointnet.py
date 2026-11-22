@@ -40,6 +40,10 @@ def main() -> None:
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--lr-step", type=int, default=20,
+                   help="divise le taux d'apprentissage par 2 toutes les N époques")
+    p.add_argument("--resume", action="store_true",
+                   help="reprend depuis models/pointnet_last.pt si l'entraînement a été interrompu")
     p.add_argument("--no-feature-transform", action="store_true",
                    help="désactive le T-Net 64x64 (entraînement ~2x plus rapide sur CPU)")
     p.add_argument("--limit", type=int, default=None, help="n'utilise que N exemples (debug)")
@@ -64,17 +68,27 @@ def main() -> None:
 
     model = PointNet(len(classes), feature_transform=not args.no_feature_transform).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.StepLR(opt, step_size=20, gamma=0.5)
+    sched = torch.optim.lr_scheduler.StepLR(opt, step_size=args.lr_step, gamma=0.5)
     print(f"device={device}  train={len(train_set)}  test={len(test_set)}  "
           f"params={sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
 
     args.out.mkdir(parents=True, exist_ok=True)
     log_path = args.out / "pointnet_log.csv"
-    best = 0.0
-    with log_path.open("w", newline="") as f:
+    last_path = args.out / "pointnet_last.pt"
+    best, start = 0.0, 1
+    if args.resume and last_path.exists():
+        ckpt = torch.load(last_path, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        opt.load_state_dict(ckpt["optimizer"])
+        sched.load_state_dict(ckpt["scheduler"])
+        best, start = ckpt["best"], ckpt["epoch"] + 1
+        print(f"Reprise à l'époque {start} (meilleure précision jusqu'ici : {best:.3f})")
+
+    with log_path.open("a" if start > 1 else "w", newline="") as f:
         log = csv.writer(f)
-        log.writerow(["epoch", "train_loss", "train_acc", "test_acc", "test_mean_class_acc", "seconds"])
-        for epoch in range(1, args.epochs + 1):
+        if start == 1:
+            log.writerow(["epoch", "train_loss", "train_acc", "test_acc", "test_mean_class_acc", "seconds"])
+        for epoch in range(start, args.epochs + 1):
             model.train()
             t0, losses, hits, seen = time.time(), [], 0, 0
             for pts, labels in train_loader:
@@ -95,12 +109,15 @@ def main() -> None:
             f.flush()
             flag = ""
             if acc > best:
-                best = acc
-                torch.save({"model": model.state_dict(), "classes": classes, "args": vars(args)},
+                best = float(acc)
+                torch.save({"model": model.state_dict(), "classes": classes,
+                            "args": {k: str(v) for k, v in vars(args).items()}},
                            args.out / "pointnet_best.pt")
                 flag = "  <- meilleur"
+            torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
+                        "scheduler": sched.state_dict(), "epoch": epoch, "best": best}, last_path)
             print(f"époque {epoch:3d} | loss {np.mean(losses):.3f} | train {hits / seen:.3f} | "
-                  f"test {acc:.3f} (moy. classes {mean_cls:.3f}) | {dt:.0f}s{flag}")
+                  f"test {acc:.3f} (moy. classes {mean_cls:.3f}) | {dt:.0f}s{flag}", flush=True)
 
     print(f"Meilleure précision test : {best:.3f}  (journal : {log_path})")
 
