@@ -18,5 +18,8 @@ dependencies = [
 viz = ["open3d"]
 dev = ["pytest", "ipykernel"]
 
+[tool.pytest.ini_options]
+addopts = "-p no:dash"
+
 [tool.setuptools.packages.find]
 where = ["src"]

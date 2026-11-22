@@ -30,7 +30,6 @@ def main() -> None:
         o3d.visualization.draw_geometries([pcd], window_name=str(classes[labels[args.index]]))
         return
 
-    # un exemple pour 12 classes différentes
     rng = np.random.default_rng(1)
     picks = [rng.choice(np.flatnonzero(labels == c)) for c in rng.choice(len(classes), 12, replace=False)]
     fig = plt.figure(figsize=(14, 10))
