@@ -1,6 +1,6 @@
-"""Convertit les maillages ModelNet40 (.off) en nuages de points mis en cache.
+"""Convert the ModelNet40 meshes (.off) into cached point clouds.
 
-Usage :
+Usage:
     python scripts/prepare_modelnet40.py --root data/raw/ModelNet40 --out data/processed
 """
 

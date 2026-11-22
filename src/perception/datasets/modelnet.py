@@ -1,4 +1,4 @@
-"""ModelNet40 : maillages .off -> nuages de points normalisés -> Dataset PyTorch."""
+"""ModelNet40: .off meshes -> normalized point clouds -> PyTorch Dataset."""
 
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ except ImportError:  # pragma: no cover
 
 
 def read_off(text: str) -> tuple[np.ndarray, np.ndarray]:
-    """Renvoie les sommets (V, 3) et les triangles (F, 3) d'un fichier OFF."""
+    """Return the vertices (V, 3) and triangles (F, 3) of an OFF file."""
     lines = [ln.strip() for ln in text.splitlines()]
     lines = [ln for ln in lines if ln and not ln.startswith("#")]
     header = lines[0]
     if not header.startswith("OFF"):
-        raise ValueError("Fichier OFF invalide : l'en-tête doit commencer par 'OFF'")
+        raise ValueError("Invalid OFF file: header must start with 'OFF'")
 
-    # certains fichiers ModelNet ont l'en-tête collé aux compteurs : "OFF490 518 0"
+    # some ModelNet files glue the header to the counts: "OFF490 518 0"
     rest = header[3:].strip()
     counts_line, body = (rest, lines[1:]) if rest else (lines[1], lines[2:])
     n_verts, n_faces = (int(x) for x in counts_line.split()[:2])
@@ -44,7 +44,7 @@ def read_off(text: str) -> tuple[np.ndarray, np.ndarray]:
 def sample_surface(
     verts: np.ndarray, faces: np.ndarray, n_points: int, rng: np.random.Generator
 ) -> np.ndarray:
-    """Tire des points uniformément sur la surface, en pondérant chaque face par son aire."""
+    """Sample points uniformly on the surface, weighting each face by its area."""
     tri = verts[faces]
     areas = 0.5 * np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1)
     total = areas.sum()
@@ -89,7 +89,7 @@ def list_classes(root: Path) -> list[str]:
 def preprocess_split(
     root: str | Path, split: str, out_file: str | Path, n_points: int = 1024, workers: int = 4
 ) -> Path:
-    """Convertit tous les maillages d'un split ('train' ou 'test') et les enregistre en .npz."""
+    """Convert every mesh of a split ('train' or 'test') and save them to a .npz file."""
     from tqdm import tqdm
 
     root, out_file = Path(root), Path(out_file)

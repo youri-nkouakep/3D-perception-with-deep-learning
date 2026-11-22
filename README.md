@@ -1,78 +1,78 @@
 # 3D Perception with Deep Learning
 
-Faire comprendre le monde en 3D à une machine : reconnaître des objets à partir de nuages de points, estimer la profondeur d'une image, détecter des objets dans une scène LiDAR.
+Teaching a machine to understand the world in 3D: recognizing objects from point clouds, estimating depth from a single image, and detecting objects in a LiDAR scene.
 
-Le projet avance en trois étapes, de l'objet isolé jusqu'à la scène de rue :
+The project goes from a single object to a full street scene in three steps:
 
-| Étape | Tâche | Données | Statut |
+| Step | Task | Data | Status |
 |---|---|---|---|
-| 1 | Classification de nuages de points (PointNet) | ModelNet40 | Terminée, **88,6 %** |
-| 2 | Estimation de profondeur à partir d'une image | NYU Depth v2 | À venir |
-| 3 | Détection 3D d'objets dans un scan LiDAR | KITTI | À venir |
+| 1 | Point cloud classification (PointNet) | ModelNet40 | Done, **88.6%** |
+| 2 | Monocular depth estimation | NYU Depth v2 | In progress |
+| 3 | 3D object detection in LiDAR scans | KITTI | Planned |
 
-## Étape 1 : PointNet sur ModelNet40
+## Step 1: PointNet on ModelNet40
 
-![Exemples de nuages de points ModelNet40](docs/modelnet40_samples.png)
+![ModelNet40 point cloud samples](docs/modelnet40_samples.png)
 
-ModelNet40 contient 12 311 modèles 3D répartis en 40 classes (avion, chaise, table, guitare...). Chaque maillage est converti en un nuage de 1 024 points tirés uniformément sur sa surface, puis centré et ramené dans la sphère unité.
+ModelNet40 contains 12,311 3D models across 40 classes (airplane, chair, table, guitar...). Each mesh is turned into a cloud of 1,024 points sampled uniformly on its surface, then centered and scaled into the unit sphere.
 
-PointNet ([Qi et al., CVPR 2017](https://arxiv.org/abs/1612.00593)) lit directement ces points, sans les transformer en image ou en voxels. Le même petit réseau traite chaque point séparément, puis un max-pooling résume l'ensemble : le résultat ne dépend pas de l'ordre des points, ce qui est vérifié dans les tests.
+PointNet ([Qi et al., CVPR 2017](https://arxiv.org/abs/1612.00593)) reads these points directly, without turning them into images or voxels. The same small network processes every point on its own, then a max-pooling summarizes the whole set: the result does not depend on the order of the points, which is checked in the tests.
 
-### Résultats
+### Results
 
-| | Précision globale | Moyenne par classe |
+| | Overall accuracy | Class average |
 |---|---|---|
-| Ce projet (25 époques, CPU, sans T-Net 64x64) | **88,6 %** | 83,1 % |
-| Article original (250 époques, GPU, modèle complet) | 89,2 % | 86,2 % |
+| This project (25 epochs, CPU, no 64x64 T-Net) | **88.6%** | 83.1% |
+| Original paper (250 epochs, GPU, full model) | 89.2% | 86.2% |
 
-Le modèle arrive à 0,6 point de l'article avec dix fois moins d'époques, entraîné en 5 h sur un processeur Intel i3 sans carte graphique.
+The model gets within 0.6 points of the paper with ten times fewer epochs, trained in 5 hours on an Intel i3 laptop CPU with no GPU.
 
-![Courbes d'apprentissage](docs/pointnet_curves.png)
+![Learning curves](docs/pointnet_curves.png)
 
-Les sauts aux époques 11 et 21 correspondent à la division du taux d'apprentissage par 2. La précision de test reste au-dessus de celle d'entraînement parce que l'entraînement se fait avec des données augmentées (étirement, décalage, bruit) et du dropout, alors que le test se fait sur les nuages bruts.
+The jumps at epochs 11 and 21 match the points where the learning rate is halved. Test accuracy stays above training accuracy because training uses augmented data (scaling, shifting, noise) and dropout, while the test runs on the raw clouds.
 
-### Où le modèle se trompe
+### Where the model gets it wrong
 
-<img src="docs/pointnet_per_class.png" width="560" alt="Précision par classe">
+<img src="docs/pointnet_per_class.png" width="560" alt="Accuracy per class">
 
-Les erreurs ne sont pas dues au hasard. Elles se concentrent sur des objets qui ont presque la même forme :
+The errors are not random. They focus on objects that have almost the same shape:
 
-| Vraie classe | Prédite comme | Part des exemples |
+| True class | Predicted as | Share of samples |
 |---|---|---|
-| flower_pot | plant | 55 % |
-| cup | vase | 30 % |
-| radio | glass_box | 25 % |
-| wardrobe | bookshelf | 25 % |
-| night_stand | dresser | 22 % |
+| flower_pot | plant | 55% |
+| cup | vase | 30% |
+| radio | glass_box | 25% |
+| wardrobe | bookshelf | 25% |
+| night_stand | dresser | 22% |
 
-Un pot de fleurs contient presque toujours une plante, et une table de nuit ressemble beaucoup à une commode en plus petit. Comme les nuages sont normalisés à la même taille, l'échelle réelle de l'objet est perdue, alors que c'est justement ce qui permet de distinguer ces classes. Les classes les plus faibles n'ont aussi que 20 exemples de test : une seule erreur y coûte 5 points.
+A flower pot almost always holds a plant, and a night stand looks a lot like a smaller dresser. Since every cloud is scaled to the same size, the real size of the object is lost, and that is exactly what tells these classes apart. The weakest classes also have only 20 test samples, so a single mistake costs 5 points.
 
-La matrice de confusion complète est dans [docs/pointnet_confusion.png](docs/pointnet_confusion.png) et les chiffres par classe dans [docs/pointnet_results.json](docs/pointnet_results.json).
+The full confusion matrix is in [docs/pointnet_confusion.png](docs/pointnet_confusion.png) and the per-class numbers in [docs/pointnet_results.json](docs/pointnet_results.json).
 
-### Reproduire
+### Reproduce
 
 ```bash
 conda env create -f environment.yml
 conda activate perception
-pip install open3d   # optionnel, pour la vue 3D interactive
+pip install open3d   # optional, for the interactive 3D view
 
-# ModelNet40.zip (1,9 Go) : http://modelnet.cs.princeton.edu, à décompresser dans data/raw/
+# ModelNet40.zip (1.9 GB): http://modelnet.cs.princeton.edu, unzip into data/raw/
 python scripts/prepare_modelnet40.py
 python scripts/train_pointnet.py --epochs 25 --lr-step 10 --no-feature-transform
 python scripts/evaluate_pointnet.py
 ```
 
-Un entraînement interrompu reprend avec `--resume`. Sur GPU, le modèle complet (sans `--no-feature-transform`) sur 250 époques reproduit le protocole de l'article.
+An interrupted run continues with `--resume`. On a GPU, the full model (without `--no-feature-transform`) over 250 epochs follows the paper's setup.
 
-## Structure
+## Project structure
 
 ```
 src/perception/
-  datasets/modelnet.py   lecture des .off, échantillonnage, Dataset PyTorch
-  models/pointnet.py     PointNet, T-Net et régularisation
-scripts/                 préparation, entraînement, évaluation, visualisation
-tests/                   tests unitaires (pytest)
-docs/                    figures et résultats
+  datasets/modelnet.py   .off reader, surface sampling, PyTorch Dataset
+  models/pointnet.py     PointNet, T-Net and regularization
+scripts/                 data preparation, training, evaluation, visualization
+tests/                   unit tests (pytest)
+docs/                    figures and results
 ```
 
 ## Tests
@@ -81,4 +81,4 @@ docs/                    figures et résultats
 pytest
 ```
 
-Les tests vérifient entre autres que la prédiction ne change pas quand on mélange les points, et que le modèle arrive à apprendre par cœur un petit lot.
+Among other things, the tests check that the prediction does not change when the points are shuffled, and that the model can memorize a small batch.

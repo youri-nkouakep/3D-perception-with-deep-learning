@@ -1,7 +1,7 @@
-"""Affiche des nuages de points ModelNet40.
+"""Show ModelNet40 point clouds.
 
-    python scripts/visualize_modelnet40.py                  # grille d'exemples -> PNG
-    python scripts/visualize_modelnet40.py --open3d --index 0  # vue 3D interactive
+    python scripts/visualize_modelnet40.py                  # grid of samples -> PNG
+    python scripts/visualize_modelnet40.py --open3d --index 0  # interactive 3D view
 """
 
 import argparse

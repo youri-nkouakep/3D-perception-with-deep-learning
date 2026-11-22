@@ -13,7 +13,7 @@ def test_output_shape():
 
 
 def test_permutation_invariance():
-    """Mélanger l'ordre des points ne doit pas changer la prédiction."""
+    """Shuffling the points must not change the prediction."""
     torch.manual_seed(0)
     model = PointNet(n_classes=10).eval()
     pts = torch.randn(2, 512, 3)
@@ -33,7 +33,7 @@ def test_tnets_start_as_identity():
 
 
 def test_can_overfit_tiny_batch():
-    """Contrôle de bon sens : le modèle doit pouvoir apprendre 8 exemples par cœur."""
+    """Sanity check: the model must be able to memorize 8 samples."""
     torch.manual_seed(0)
     model = PointNet(n_classes=4, feature_transform=False)
     pts, labels = torch.randn(8, 256, 3), torch.arange(8) % 4

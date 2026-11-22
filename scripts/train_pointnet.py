@@ -1,8 +1,8 @@
-"""Entraîne PointNet sur ModelNet40 et sauvegarde le meilleur modèle.
+"""Train PointNet on ModelNet40 and save the best model.
 
-Usage :
+Usage:
     python scripts/train_pointnet.py --epochs 50
-    python scripts/train_pointnet.py --epochs 2 --limit 512   # essai rapide
+    python scripts/train_pointnet.py --epochs 2 --limit 512   # quick check
 """
 
 import argparse
@@ -41,12 +41,12 @@ def main() -> None:
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--lr-step", type=int, default=20,
-                   help="divise le taux d'apprentissage par 2 toutes les N époques")
+                   help="halve the learning rate every N epochs")
     p.add_argument("--resume", action="store_true",
-                   help="reprend depuis models/pointnet_last.pt si l'entraînement a été interrompu")
+                   help="resume from models/pointnet_last.pt after an interruption")
     p.add_argument("--no-feature-transform", action="store_true",
-                   help="désactive le T-Net 64x64 (entraînement ~2x plus rapide sur CPU)")
-    p.add_argument("--limit", type=int, default=None, help="n'utilise que N exemples (debug)")
+                   help="disable the 64x64 T-Net (about 2x faster on CPU)")
+    p.add_argument("--limit", type=int, default=None, help="use only N samples (debug)")
     p.add_argument("--out", type=Path, default=Path("models"))
     p.add_argument("--workers", type=int, default=0)
     args = p.parse_args()
@@ -82,7 +82,7 @@ def main() -> None:
         opt.load_state_dict(ckpt["optimizer"])
         sched.load_state_dict(ckpt["scheduler"])
         best, start = ckpt["best"], ckpt["epoch"] + 1
-        print(f"Reprise à l'époque {start} (meilleure précision jusqu'ici : {best:.3f})")
+        print(f"Resuming at epoch {start} (best accuracy so far: {best:.3f})")
 
     with log_path.open("a" if start > 1 else "w", newline="") as f:
         log = csv.writer(f)
@@ -113,13 +113,13 @@ def main() -> None:
                 torch.save({"model": model.state_dict(), "classes": classes,
                             "args": {k: str(v) for k, v in vars(args).items()}},
                            args.out / "pointnet_best.pt")
-                flag = "  <- meilleur"
+                flag = "  <- best"
             torch.save({"model": model.state_dict(), "optimizer": opt.state_dict(),
                         "scheduler": sched.state_dict(), "epoch": epoch, "best": best}, last_path)
-            print(f"époque {epoch:3d} | loss {np.mean(losses):.3f} | train {hits / seen:.3f} | "
-                  f"test {acc:.3f} (moy. classes {mean_cls:.3f}) | {dt:.0f}s{flag}", flush=True)
+            print(f"epoch {epoch:3d} | loss {np.mean(losses):.3f} | train {hits / seen:.3f} | "
+                  f"test {acc:.3f} (class avg {mean_cls:.3f}) | {dt:.0f}s{flag}", flush=True)
 
-    print(f"Meilleure précision test : {best:.3f}  (journal : {log_path})")
+    print(f"Best test accuracy: {best:.3f}  (log: {log_path})")
 
 
 if __name__ == "__main__":

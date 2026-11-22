@@ -1,4 +1,4 @@
-"""PointNet (Qi et al., CVPR 2017) pour classer des nuages de points (B, N, 3)."""
+"""PointNet (Qi et al., CVPR 2017) for point cloud classification, input (B, N, 3)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def _mlp1d(channels: list[int]) -> nn.Sequential:
 
 
 class TNet(nn.Module):
-    """Prédit une matrice k x k qui aligne le nuage avant l'extraction des features."""
+    """Predicts a k x k matrix that aligns the input before feature extraction."""
 
     def __init__(self, k: int):
         super().__init__()
@@ -26,7 +26,7 @@ class TNet(nn.Module):
             nn.Linear(512, 256), nn.BatchNorm1d(256), nn.ReLU(inplace=True),
             nn.Linear(256, k * k),
         )
-        # sortie nulle au départ, donc la transformation commence à l'identité
+        # zero output at init, so the transform starts as the identity
         nn.init.zeros_(self.head[-1].weight)
         nn.init.zeros_(self.head[-1].bias)
 
@@ -52,7 +52,7 @@ class PointNet(nn.Module):
         )
 
     def forward(self, points: torch.Tensor):
-        """Renvoie les logits et la matrice du T-Net 64x64 (None s'il est désactivé)."""
+        """Return the logits and the 64x64 T-Net matrix (None when disabled)."""
         x = points.transpose(1, 2)
         if self.input_tnet is not None:
             x = torch.bmm(self.input_tnet(x), x)
@@ -62,13 +62,13 @@ class PointNet(nn.Module):
             feat_mat = self.feature_tnet(x)
             x = torch.bmm(feat_mat, x)
         x = self.mlp2(x)
-        # le max-pooling rend le modèle insensible à l'ordre des points
+        # max-pooling makes the model independent of the point order
         global_feat = x.max(dim=2).values
         return self.classifier(global_feat), feat_mat
 
 
 def orthogonality_loss(mat: torch.Tensor | None) -> torch.Tensor:
-    """||I - A·Aᵀ||², garde la matrice du T-Net proche d'une rotation."""
+    """||I - A·Aᵀ||², keeps the T-Net matrix close to a rotation."""
     if mat is None:
         return torch.tensor(0.0)
     eye = torch.eye(mat.shape[1], device=mat.device)

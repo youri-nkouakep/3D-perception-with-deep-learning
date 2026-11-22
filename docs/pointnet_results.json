@@ -1,7 +1,7 @@
 {
-  "precision_globale": 0.8857,
-  "precision_moyenne_par_classe": 0.8314,
-  "par_classe": {
+  "overall_accuracy": 0.8857,
+  "mean_class_accuracy": 0.8314,
+  "per_class": {
     "airplane": 1.0,
     "bathtub": 0.88,
     "bed": 0.98,
@@ -43,66 +43,66 @@
     "wardrobe": 0.5,
     "xbox": 0.65
   },
-  "confusions_principales": [
+  "top_confusions": [
     {
-      "vraie": "night_stand",
-      "predite": "dresser",
-      "nombre": 19,
-      "part": 0.221
+      "true": "night_stand",
+      "predicted": "dresser",
+      "count": 19,
+      "share": 0.221
     },
     {
-      "vraie": "flower_pot",
-      "predite": "plant",
-      "nombre": 11,
-      "part": 0.55
+      "true": "flower_pot",
+      "predicted": "plant",
+      "count": 11,
+      "share": 0.55
     },
     {
-      "vraie": "desk",
-      "predite": "table",
-      "nombre": 8,
-      "part": 0.093
+      "true": "desk",
+      "predicted": "table",
+      "count": 8,
+      "share": 0.093
     },
     {
-      "vraie": "vase",
-      "predite": "cup",
-      "nombre": 8,
-      "part": 0.08
+      "true": "vase",
+      "predicted": "cup",
+      "count": 8,
+      "share": 0.08
     },
     {
-      "vraie": "night_stand",
-      "predite": "table",
-      "nombre": 6,
-      "part": 0.07
+      "true": "night_stand",
+      "predicted": "table",
+      "count": 6,
+      "share": 0.07
     },
     {
-      "vraie": "plant",
-      "predite": "flower_pot",
-      "nombre": 6,
-      "part": 0.06
+      "true": "plant",
+      "predicted": "flower_pot",
+      "count": 6,
+      "share": 0.06
     },
     {
-      "vraie": "cup",
-      "predite": "vase",
-      "nombre": 6,
-      "part": 0.3
+      "true": "cup",
+      "predicted": "vase",
+      "count": 6,
+      "share": 0.3
     },
     {
-      "vraie": "radio",
-      "predite": "glass_box",
-      "nombre": 5,
-      "part": 0.25
+      "true": "radio",
+      "predicted": "glass_box",
+      "count": 5,
+      "share": 0.25
     },
     {
-      "vraie": "wardrobe",
-      "predite": "bookshelf",
-      "nombre": 5,
-      "part": 0.25
+      "true": "wardrobe",
+      "predicted": "bookshelf",
+      "count": 5,
+      "share": 0.25
     },
     {
-      "vraie": "piano",
-      "predite": "table",
-      "nombre": 5,
-      "part": 0.05
+      "true": "piano",
+      "predicted": "table",
+      "count": 5,
+      "share": 0.05
     }
   ]
 }

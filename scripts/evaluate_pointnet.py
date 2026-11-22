@@ -1,4 +1,4 @@
-"""Évalue le meilleur modèle PointNet et génère les figures du README.
+"""Evaluate the best PointNet model and build the README figures.
 
     python scripts/evaluate_pointnet.py
 """
@@ -47,32 +47,32 @@ def plot_curves(log_file: Path, out: Path):
     col = lambda k: [float(r[k]) * (100 if "acc" in k else 1) for r in rows]
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4))
-    series = [("train_acc", "Entraînement", BLUE), ("test_acc", "Test", ORANGE),
-              ("test_mean_class_acc", "Test, moyenne par classe", AQUA)]
+    series = [("train_acc", "Train", BLUE), ("test_acc", "Test", ORANGE),
+              ("test_mean_class_acc", "Test, class average", AQUA)]
     for key, name, color in series:
         y = col(key)
         ax1.plot(ep, y, color=color, lw=2, label=name)
-        ax1.annotate(f"{y[-1]:.1f} %", (ep[-1], y[-1]), xytext=(6, 0),
+        ax1.annotate(f"{y[-1]:.1f}%", (ep[-1], y[-1]), xytext=(6, 0),
                      textcoords="offset points", va="center", color=INK_2, fontsize=9)
     best = int(np.argmax(col("test_acc")))
     ax1.plot(ep[best], col("test_acc")[best], "o", ms=8, color=ORANGE, mec=SURFACE, mew=2)
-    ax1.annotate(f"meilleur : {col('test_acc')[best]:.1f} %", (ep[best], col("test_acc")[best]),
+    ax1.annotate(f"best: {col('test_acc')[best]:.1f}%", (ep[best], col("test_acc")[best]),
                  xytext=(0, 10), textcoords="offset points", ha="center", color=INK_2, fontsize=9)
-    ax1.set_title("Précision (%)", loc="left", color=INK)
-    ax1.set_xlabel("Époque")
+    ax1.set_title("Accuracy (%)", loc="left", color=INK)
+    ax1.set_xlabel("Epoch")
     ax1.legend(frameon=False, loc="lower right")
 
     ax2.plot(ep, col("train_loss"), color=BLUE, lw=2)
-    ax2.set_title("Loss d'entraînement", loc="left", color=INK)
-    ax2.set_xlabel("Époque")
+    ax2.set_title("Training loss", loc="left", color=INK)
+    ax2.set_xlabel("Epoch")
 
     for ax in (ax1, ax2):
         ax.grid(axis="y", color=GRID, lw=0.8)
         ax.set_xlim(1, ep[-1] + 2)
         for x in (10.5, 20.5):
             ax.axvline(x, color=INK_2, lw=0.8, ls=":")
-    ax2.text(10.7, ax2.get_ylim()[1], "lr ÷ 2", color=INK_2, fontsize=8, va="top")
-    ax2.text(20.7, ax2.get_ylim()[1], "lr ÷ 2", color=INK_2, fontsize=8, va="top")
+    ax2.text(10.7, ax2.get_ylim()[1], "lr / 2", color=INK_2, fontsize=8, va="top")
+    ax2.text(20.7, ax2.get_ylim()[1], "lr / 2", color=INK_2, fontsize=8, va="top")
     fig.tight_layout()
     fig.savefig(out, dpi=130)
     plt.close(fig)
@@ -85,9 +85,9 @@ def plot_confusion(cm: np.ndarray, classes: list[str], out: Path):
     im = ax.imshow(norm * 100, cmap=cmap, vmin=0, vmax=100)
     ax.set_xticks(range(len(classes)), classes, rotation=90, fontsize=8)
     ax.set_yticks(range(len(classes)), classes, fontsize=8)
-    ax.set_xlabel("Classe prédite")
-    ax.set_ylabel("Vraie classe")
-    ax.set_title("Matrice de confusion sur le test (% par vraie classe)", loc="left", color=INK)
+    ax.set_xlabel("Predicted class")
+    ax.set_ylabel("True class")
+    ax.set_title("Test confusion matrix (% of each true class)", loc="left", color=INK)
     for s in ax.spines.values():
         s.set_visible(False)
     cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
@@ -106,8 +106,8 @@ def plot_per_class(acc: np.ndarray, support: np.ndarray, classes: list[str], out
     for yi, i in zip(y, order):
         ax.text(acc[i] * 100 + 1, yi, f"{acc[i] * 100:.0f}", va="center", fontsize=7, color=INK_2)
     ax.set_xlim(0, 108)
-    ax.set_xlabel("Précision (%)")
-    ax.set_title("Précision par classe (nombre d'exemples de test)", loc="left", color=INK)
+    ax.set_xlabel("Accuracy (%)")
+    ax.set_title("Accuracy per class (number of test samples)", loc="left", color=INK)
     ax.grid(axis="x", color=GRID, lw=0.8)
     ax.set_axisbelow(True)
     fig.tight_layout()
@@ -141,14 +141,14 @@ def main() -> None:
     off = cm.copy()
     np.fill_diagonal(off, 0)
     top = np.dstack(np.unravel_index(np.argsort(off, axis=None)[::-1][:10], off.shape))[0]
-    confusions = [{"vraie": classes[i], "predite": classes[j], "nombre": int(off[i, j]),
-                   "part": round(off[i, j] / support[i], 3)} for i, j in top]
+    confusions = [{"true": classes[i], "predicted": classes[j], "count": int(off[i, j]),
+                   "share": round(off[i, j] / support[i], 3)} for i, j in top]
 
     results = {
-        "precision_globale": round(float((preds == labels).mean()), 4),
-        "precision_moyenne_par_classe": round(float(per_class.mean()), 4),
-        "par_classe": {c: round(float(a), 3) for c, a in zip(classes, per_class)},
-        "confusions_principales": confusions,
+        "overall_accuracy": round(float((preds == labels).mean()), 4),
+        "mean_class_accuracy": round(float(per_class.mean()), 4),
+        "per_class": {c: round(float(a), 3) for c, a in zip(classes, per_class)},
+        "top_confusions": confusions,
     }
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -158,11 +158,11 @@ def main() -> None:
     plot_confusion(cm, classes, args.out / "pointnet_confusion.png")
     plot_per_class(per_class, support, classes, args.out / "pointnet_per_class.png")
 
-    print(f"Précision globale : {results['precision_globale']:.3f}")
-    print(f"Moyenne par classe : {results['precision_moyenne_par_classe']:.3f}")
-    print("Confusions principales :")
+    print(f"Overall accuracy: {results['overall_accuracy']:.3f}")
+    print(f"Class average: {results['mean_class_accuracy']:.3f}")
+    print("Top confusions:")
     for c in confusions:
-        print(f"  {c['vraie']:>12} -> {c['predite']:<12} {c['nombre']:3d}  ({c['part'] * 100:.0f} %)")
+        print(f"  {c['true']:>12} -> {c['predicted']:<12} {c['count']:3d}  ({c['share'] * 100:.0f}%)")
 
 
 if __name__ == "__main__":

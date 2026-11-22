@@ -9,7 +9,7 @@ from perception.datasets.modelnet import (
     sample_surface,
 )
 
-# cube unité avec des faces carrées (testent la triangulation)
+# unit cube with quad faces, to test triangulation
 CUBE = """OFF
 8 6 0
 0 0 0
