@@ -11,6 +11,9 @@ dependencies = [
     "opencv-python",
     "matplotlib",
     "torch",
+    "torchvision",
+    "h5py",
+    "scipy",
     "tqdm",
 ]
 
