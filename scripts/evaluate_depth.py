@@ -43,6 +43,12 @@ def plot_curves(log_file: Path, out: Path):
         ax.plot(ep, y, color=BLUE, lw=2)
         ax.annotate(f"{y[-1]:.3f}", (ep[-1], y[-1]), xytext=(6, 0), textcoords="offset points",
                     va="center", color=INK_2, fontsize=9)
+        if key == "abs_rel":
+            b = int(np.argmin(y))
+            ax.margins(y=0.15)
+            ax.plot(ep[b], y[b], "o", ms=8, color=ORANGE, mec=SURFACE, mew=2)
+            ax.annotate(f"kept: {y[b]:.3f}", (ep[b], y[b]), xytext=(0, -16), textcoords="offset points",
+                        ha="center", color=INK_2, fontsize=9)
         ax.set_title(title, loc="left", color=INK)
         ax.set_xlabel("Epoch")
         ax.set_xlim(1, ep[-1] + 2)
