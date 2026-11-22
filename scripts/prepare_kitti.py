@@ -9,8 +9,10 @@ Can be stopped and run again, finished scans are skipped.
 
 import argparse
 import io
+import struct
 import urllib.request
 import zipfile
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -25,6 +27,31 @@ SPLITS_URL = "https://raw.githubusercontent.com/open-mmlab/OpenPCDet/master/data
 def fetch(url: str) -> bytes:
     with urllib.request.urlopen(url, timeout=300) as r:
         return r.read()
+
+
+def range_get(url: str, start: int, end: int) -> bytes:
+    req = urllib.request.Request(url, headers={"Range": f"bytes={start}-{end - 1}"})
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                return r.read()
+        except OSError:
+            if attempt == 4:
+                raise
+
+
+def read_member(url: str, info: zipfile.ZipInfo) -> bytes:
+    # the local header is 30 bytes + name + extra field, the extra length is only known once read
+    margin = 30 + len(info.filename) + 256
+    blob = range_get(url, info.header_offset, info.header_offset + margin + info.compress_size)
+    name_len, extra_len = struct.unpack("<HH", blob[26:30])
+    start = 30 + name_len + extra_len
+    raw = blob[start:start + info.compress_size]
+    if len(raw) < info.compress_size:
+        raw = range_get(url, info.header_offset + start, info.header_offset + start + info.compress_size)
+    if info.compress_type == zipfile.ZIP_DEFLATED:
+        return zlib.decompress(raw, -15)
+    return raw
 
 
 def extract_small_zip(name: str, folder: str, out: Path) -> None:
@@ -60,20 +87,21 @@ def main() -> None:
     chunks = [todo[k::args.workers] for k in range(args.workers)]
     bar = tqdm(total=len(ids), initial=len(ids) - len(todo), desc="LiDAR scans")
 
+    url = KITTI_URL + "data_object_velodyne.zip"
+    # read the zip index once, then fetch each scan with a single range request
+    with zipfile.ZipFile(io.BufferedReader(HttpRangeFile(url), buffer_size=1 << 20)) as z:
+        members = {Path(i.filename).stem: i for i in z.infolist() if i.filename.startswith("training/velodyne/")}
+
     def work(chunk: list[str]) -> None:
-        if not chunk:
-            return
-        remote = io.BufferedReader(HttpRangeFile(KITTI_URL + "data_object_velodyne.zip"), buffer_size=1 << 20)
-        with zipfile.ZipFile(remote) as z:
-            for idx in chunk:
-                pts = np.frombuffer(z.read(f"training/velodyne/{idx}.bin"), dtype=np.float32).reshape(-1, 4)
-                calib = Calib.from_text((out / "calib" / f"{idx}.txt").read_text())
-                pts = crop_to_camera(pts, calib)
-                # write then rename, so a stopped run never leaves a half-written scan
-                tmp = out / "points" / f"{idx}.part.npy"
-                np.save(tmp, pts.astype(np.float16))
-                tmp.replace(out / "points" / f"{idx}.npy")
-                bar.update()
+        for idx in chunk:
+            pts = np.frombuffer(read_member(url, members[idx]), dtype=np.float32).reshape(-1, 4)
+            calib = Calib.from_text((out / "calib" / f"{idx}.txt").read_text())
+            pts = crop_to_camera(pts, calib)
+            # write then rename, so a stopped run never leaves a half-written scan
+            tmp = out / "points" / f"{idx}.part.npy"
+            np.save(tmp, pts.astype(np.float16))
+            tmp.replace(out / "points" / f"{idx}.npy")
+            bar.update()
 
     with ThreadPoolExecutor(args.workers) as pool:
         list(pool.map(work, chunks))
