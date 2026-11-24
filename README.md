@@ -8,7 +8,7 @@ The project goes from a single object to a full street scene in three steps:
 |---|---|---|---|
 | 1 | Point cloud classification (PointNet) | ModelNet40 | Done, **88.6%** |
 | 2 | Monocular depth estimation (U-Net) | NYU Depth v2 | Done, **AbsRel 0.204** |
-| 3 | 3D object detection in LiDAR scans | KITTI | Planned |
+| 3 | 3D car detection in LiDAR scans (PointPillars) | KITTI | Done, **38.5% AP3D / 66.6% APBEV** |
 
 ## Step 1: PointNet on ModelNet40
 
@@ -107,14 +107,70 @@ python scripts/train_depth.py --epochs 20
 python scripts/evaluate_depth.py
 ```
 
+## Step 3: Finding cars in LiDAR scans on KITTI
+
+This is the real thing for a self-driving car: a LiDAR on the roof spins and returns about 120,000 points per scan, and the car must find every other vehicle in it as a 3D box (position, size, heading).
+
+KITTI was recorded by a car driving around Karlsruhe. The 7,481 labeled scans are split as usual into 3,712 for training and 3,769 for validation. Only the points seen by the front camera are kept, since that is the only area with labels. The 27 GB LiDAR archive is never stored on disk: each scan is read straight out of the remote zip with an HTTP range request, cropped, and saved as float16 (1.1 GB in total).
+
+The detector follows PointPillars ([Lang et al., CVPR 2019](https://arxiv.org/abs/1812.05784)), in a light version that trains on a CPU:
+
+1. The ground is cut into a grid of 0.32 m columns ("pillars") over 64 m x 64 m.
+2. A small PointNet, the same idea as in step 1, turns the points of each pillar into one feature vector. The result is a top-view image of the scene.
+3. A 2D CNN reads this image at three scales.
+4. A CenterPoint-style head ([Yin et al., CVPR 2021](https://arxiv.org/abs/2006.11275)) predicts a heatmap of car centers and, at each center, the height, size and heading of the box. No anchor boxes and no NMS are needed: a car is a local peak of the heatmap.
+
+The model has 1.15M parameters, about 4 times fewer than the original.
+
+![Detections seen from above](docs/pointpillars_bev.png)
+
+### Results
+
+KITTI average precision for cars on the 3,769 validation scans, IoU 0.7, 40 recall points:
+
+| | BEV easy | BEV moderate | BEV hard | 3D easy | 3D moderate | 3D hard |
+|---|---|---|---|---|---|---|
+| This project (15 epochs, CPU, 1.15M params) | 75.3 | **66.6** | 63.0 | 47.3 | **38.5** | 35.9 |
+| PointPillars paper (KITTI test, GPU) | 88.4 | 86.1 | 79.8 | 79.1 | 75.0 | 68.3 |
+
+BEV means the box is checked from above only, 3D means the height must also match. An IoU of 0.7 is strict: a box shifted by 30 cm along a car already fails.
+
+![PointPillars learning curves](docs/pointpillars_curves.png)
+
+Honest notes on this comparison:
+
+- The paper trains for 160 epochs on a GPU, this model for 15 epochs (about 7 hours on a laptop CPU), with a coarser grid (0.32 m pillars instead of 0.16 m) and without the ground-truth sampling augmentation (pasting extra cars into scenes).
+- The scores were still climbing fast at the last epoch, especially in 3D (15.6, 25.4, 38.5). A longer run is the easiest way to go further.
+- The evaluation is a re-implementation of the KITTI protocol (difficulty levels, ignored vans and small boxes, R40). Matching is greedy by score, so the numbers can differ slightly from the official devkit.
+
+### What the figure shows
+
+- Cars close to the sensor are found almost every time, with tight boxes and the right heading.
+- The gap between BEV (66.6) and 3D (38.5) says that the model places cars well on the ground but is less precise on the vertical position and height of the box.
+- Far away cars, with only a few points left, are the most often missed or poorly placed. This matches the drop from easy to hard.
+- There are also false alarms (orange boxes alone), mostly on walls, bushes or parked cars far away. Some of them are real cars that KITTI did not label, for example cars hidden behind others in the camera view.
+
+### Reproduce
+
+```bash
+# needs a free KITTI account (https://www.cvlibs.net/datasets/kitti/) to accept the license
+python scripts/prepare_kitti.py --workers 8
+python scripts/train_pointpillars.py --epochs 15
+python scripts/evaluate_pointpillars.py
+```
+
 ## Project structure
 
 ```
 src/perception/
   datasets/modelnet.py   .off reader, surface sampling, PyTorch Dataset
   datasets/nyu.py        NYU Depth v2 extraction and Dataset
+  datasets/kitti.py      KITTI calibration, labels, remote zip reader and Dataset
   models/pointnet.py     PointNet, T-Net and regularization
   models/depth_unet.py   U-Net with a pretrained ResNet-18 encoder
+  models/pointpillars.py PointPillars with a center heatmap head
+  boxes.py               rotated 3D boxes and their IoU
+  kitti_eval.py          KITTI average precision (R40)
   metrics.py             depth loss and NYU metrics
 scripts/                 data preparation, training, evaluation, visualization
 tests/                   unit tests (pytest)
@@ -127,4 +183,4 @@ docs/                    figures and results
 pytest
 ```
 
-Among other things, the tests check that the PointNet prediction does not change when the points are shuffled, that it can memorize a small batch, that the depth metrics ignore pixels without a Kinect measurement, and that the depth loss with λ = 1 does not penalize a global scale error.
+Among other things, the tests check that the PointNet prediction does not change when the points are shuffled, that it can memorize a small batch, that the depth metrics ignore pixels without a Kinect measurement, that the depth loss with λ = 1 does not penalize a global scale error, and that the KITTI box conversion and rotated IoU give the expected values.
